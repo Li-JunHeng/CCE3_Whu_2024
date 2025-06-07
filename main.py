@@ -137,8 +137,10 @@ def main():
             if no_repeat:
                 if not pool:
                     print("🎉 全部 24 道大题已练完，当前轮次结束，重新随机一轮。")
-                    print(f"总成绩：{sum(all_scores)} / {all_results}")
-                    print(f"正确率：{sum(all_scores) / all_results * 100:.2f}%\n")
+                    print("-------------总信息-------------")
+                    print(f"\n\n\n\n🎉🎉🎉总成绩：{sum(all_scores)} / {all_results}")
+                    print(f"\🎉🎉🎉正确率：{sum(all_scores) / all_results * 100:.2f}%\n\n\n\n")
+                    print("-------------总信息-------------")
                     pool = list(QUESTIONS.keys())
                     random.shuffle(pool)
                 passage_key = pool.pop()
