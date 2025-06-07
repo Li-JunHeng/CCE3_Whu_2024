@@ -2,6 +2,8 @@
 
 import random
 import sys
+import time
+
 from questions_data import QUESTIONS
 from answer_key import ANSWER_KEY
 
@@ -23,7 +25,7 @@ def shuffle_options(options):
 
 def display_passage(passage_key):
     """
-    打印出标题和该大题的所有小题（仅选项，听力题常见）。
+    打印出标题和该大题的所有小题（仅选项）。
     返回一个 list of mappings，便于后续判分：
       mappings[i] 对应第 i 题打乱前→后的索引映射列表
     """
@@ -47,14 +49,14 @@ def display_passage(passage_key):
 def prompt_user(n):
     """
     提示用户输入 n 道题的答案，例如 'ABC' 或带空格 'A B C'。
-    返回一个纯大写字母字符串，长度 = n。
+    返回一个纯大写字母字符串，长度 = n，或 None（用户输入 Q 跳过本大题）。
     """
     while True:
-        ans = input(f"请输入这 {n} 道题的答案（例如：{'A'*n}）：").upper().replace(" ", "")
+        ans = input(f"请输入这 {n} 道题的答案（例如：{'A'*n}，输入 Q 跳过）: ").strip().upper().replace(" ", "")
         if ans == "Q":
             return None
         if len(ans) != n or any(c not in "ABCD" for c in ans):
-            print(f"输入无效，请输入 {n} 个 A/B/C/D，或输入 Q 退出本题。")
+            print(f"输入无效，请输入 {n} 个 A/B/C/D，或输入 Q 跳过本大题。")
         else:
             return ans
 
@@ -68,18 +70,15 @@ def grade(passage_key, user_ans, mappings):
         print(f"⚠️ 警告：找不到 {passage_key} 的参考答案，请先在 answer_key.py 填入。")
         sys.exit(1)
     if len(correct_list) != len(user_ans):
-        print(f"⚠️ 答案长度不匹配：key={passage_key}，参考答案 {len(correct_list)} 题，您输入 {len(user_ans)} 题。")
+        print(f"⚠️ 答案长度不匹配：key={passage_key}，参考 {len(correct_list)} 题，您输入 {len(user_ans)} 题。")
         sys.exit(1)
 
     results = []
     score = 0
     for i, ua in enumerate(user_ans):
-        # 用户选择的新顺序下的索引
         picked_new_idx = ord(ua) - ord('A')
-        # 对应原始 options 的索引
         picked_orig_idx = mappings[i][picked_new_idx]
 
-        # 参考答案，原始顺序下的正确字母
         correct_letter = correct_list[i]
         correct_orig_idx = ord(correct_letter) - ord('A')
 
@@ -87,7 +86,7 @@ def grade(passage_key, user_ans, mappings):
         if is_correct:
             score += 1
 
-        # 在新顺序下找出正确项对应的新字母
+        # 在新顺序下找到正确项的新字母
         correct_new_idx = mappings[i].index(correct_orig_idx)
         correct_new_letter = chr(correct_new_idx + ord('A'))
 
@@ -108,31 +107,58 @@ def display_results(results, score):
         if r["is_correct"]:
             print(f"{r['q_no']}. 您的答案 {r['user']} {mark}")
         else:
-            print(f"{r['q_no']}. 您的答案 {r['user']} {mark} ；正确答案应为 {r['correct_new']}（原序号 {r['correct_orig']}）")
+            print(f"{r['q_no']}. 您的答案 {r['user']} {mark}；正确应为 {r['correct_new']}（原序 {r['correct_orig']}）")
     print(f"本大题得分：{score}/{len(results)}")
     print("=" * 60)
 
 def main():
-    print("欢迎使用听力随机练习（输入 Q 随时退出本大题）\n")
+    print("欢迎使用听力随机练习！\n")
+
+    # —— 模式选择 —— #
+    mode = None
+    while mode not in ('1','2'):
+        print("请选择出题模式：")
+        print("  1 - 随机可重复（默认随机抽题，可能重复）")
+        print("  2 - 随机不重复（直到用完全部题后才重置）")
+        mode = input("输入 1 或 2：").strip()
+    no_repeat = (mode == '2')
+
+    # 如果不重复模式，预先打乱一轮题库
+    if no_repeat:
+        pool = list(QUESTIONS.keys())
+        random.shuffle(pool)
+    else:
+        pool = None
+
     try:
         while True:
-            key = pick_random_passage()
-            mappings = display_passage(key)
-            n = len(mappings)
-            user_ans = prompt_user(n)
+            # 根据模式获取下一个 passage_key
+            if no_repeat:
+                if not pool:
+                    print("🎉 全部 24 道大题已练完，当前轮次结束，重新随机一轮。")
+                    pool = list(QUESTIONS.keys())
+                    random.shuffle(pool)
+                passage_key = pool.pop()
+            else:
+                passage_key = pick_random_passage()
+
+            mappings = display_passage(passage_key)
+            user_ans = prompt_user(len(mappings))
             if user_ans is None:
-                print("跳过本大题，准备下一题…")
+                print("已跳过本大题，进入下一题…")
                 continue
 
-            results, score = grade(key, user_ans, mappings)
+            results, score = grade(passage_key, user_ans, mappings)
             display_results(results, score)
 
-            cont = input("继续下一大题？（回车继续，输入 N 或 Q 退出）: ").strip().upper()
+            cont = input("继续下一大题？（回车继续，N 或 Q 退出）: ").strip().upper()
             if cont.startswith('N') or cont.startswith('Q'):
                 break
+
     except KeyboardInterrupt:
         print("\n检测到中断，程序结束。")
     print("\n感谢练习，期待下次再见！")
 
 if __name__ == "__main__":
+    random.seed(time.time())
     main()
