@@ -113,6 +113,7 @@ def display_results(results, score):
 
 def main():
     print("欢迎使用听力随机练习！\n")
+    all_scores, all_results = [], 0
 
     # —— 模式选择 —— #
     mode = None
@@ -136,6 +137,8 @@ def main():
             if no_repeat:
                 if not pool:
                     print("🎉 全部 24 道大题已练完，当前轮次结束，重新随机一轮。")
+                    print(f"总成绩：{sum(all_scores)} / {all_results}")
+                    print(f"正确率：{sum(all_scores) / all_results * 100:.2f}%\n")
                     pool = list(QUESTIONS.keys())
                     random.shuffle(pool)
                 passage_key = pool.pop()
@@ -149,6 +152,8 @@ def main():
                 continue
 
             results, score = grade(passage_key, user_ans, mappings)
+            all_scores.append(score)
+            all_results += len(results)
             display_results(results, score)
 
             cont = input("继续下一大题？（回车继续，N 或 Q 退出）: ").strip().upper()
